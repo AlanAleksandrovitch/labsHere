@@ -139,52 +139,76 @@ void BinarySearchTree::Node::erase(const Key &key){
 	}
 }
 void BinarySearchTree::clear(Node* node){
-	if (node == nullptr){
-		return;
-	}
+	if (node == nullptr || node == _end) return;
 	clear(node->left);
 	clear(node->right);
 	delete node;
 }
-
-BinarySearchTree::~BinarySearchTree()
-{
+BinarySearchTree::~BinarySearchTree() {
+	detachEnd();
 	clear(_root);
+	delete _end;
 	_root = nullptr;
+	_end  = nullptr;
 	_size = 0;
 }
-BinarySearchTree::BinarySearchTree(const BinarySearchTree &other){
+BinarySearchTree::BinarySearchTree(const BinarySearchTree &other) {
 	_size = other._size;
-	if (other._root){
+	if (other._root) {
+		const_cast<BinarySearchTree&>(other).detachEnd();
 		_root = new Node(*other._root);
+		const_cast<BinarySearchTree&>(other).attachEnd();
 	}
-	else{
-		_root = nullptr;
-	}
+	attachEnd();
 }
-BinarySearchTree& BinarySearchTree::operator=(const BinarySearchTree& other){
-	if (this != &other){
+BinarySearchTree& BinarySearchTree::operator=(const BinarySearchTree& other) {
+	if (this != &other) {
 		BinarySearchTree temp(other);
 		swap(_root, temp._root);
 		swap(_size, temp._size);
+		swap(_end,  temp._end);
 	}
 	return *this;
 }
 BinarySearchTree::BinarySearchTree(BinarySearchTree &&other) noexcept{
 	_root = other._root;
 	_size = other._size;
+	_end = other._end;
 	other._root = nullptr;
+	other._end = nullptr;
 	other._size = 0;
 }
 BinarySearchTree& BinarySearchTree::operator=(BinarySearchTree &&other) noexcept{
 	if (this != &other){
+		detachEnd();
 		clear(_root);
 		_root = other._root;
 		_size = other._size;
+		_end = other._end;
 		other._root = nullptr;
+		other._end = nullptr;
 		other._size = 0;
 	}
 	return *this;
+}
+void BinarySearchTree::attachEnd() {
+	if (!_end) _end = new Node(Key{}, Value{}, nullptr);
+	if (_end->parent) _end->parent->right = nullptr;
+	_end->parent = nullptr;
+	if (!_root) return;
+	Node* maxNode = _root;
+	while (maxNode->right){
+		maxNode = maxNode->right;
+	}
+	maxNode->right = _end;
+	_end->parent   = maxNode;
+}
+
+void BinarySearchTree::detachEnd() {
+    if (_end && _end->parent) {
+        _end->parent->right = nullptr;
+        _end->parent = nullptr;
+    }
 }
 BinarySearchTree::Iterator::Iterator(Node *node){
 	_node=node;
@@ -368,7 +392,7 @@ BinarySearchTree::equalRange(const Key &key) const{
 	return {first, last};
 }
 BinarySearchTree::Iterator BinarySearchTree::end(){
-	if(!_root){
+/*	if(!_root){
 		return Iterator(nullptr);
 	}
 	Node* current = _root;
@@ -376,9 +400,11 @@ BinarySearchTree::Iterator BinarySearchTree::end(){
 		current = current->right;
 	}
 	return Iterator(current->right);
+*/
+	return Iterator(_end);
 }
 BinarySearchTree::ConstIterator BinarySearchTree::cend() const{
-	Node* current = _root;
+/*	Node* current = _root;
 	if(!_root){
 		return ConstIterator(nullptr);
 	}
@@ -386,6 +412,8 @@ BinarySearchTree::ConstIterator BinarySearchTree::cend() const{
 		current = current->right;
 	}
 	return ConstIterator(current->right);
+*/
+	return ConstIterator(_end);
 }
 BinarySearchTree::Iterator BinarySearchTree::begin(){
 	if (_root == nullptr){
@@ -488,6 +516,7 @@ BinarySearchTree::ConstIterator BinarySearchTree::max(const Key &key) const{
 	return temp2;
 }
 void BinarySearchTree::insert(const Key &key, const Value &value){
+	detachEnd();
 	if(!_root){
 		_root = new Node(key, value, nullptr);
 	}
@@ -495,10 +524,11 @@ void BinarySearchTree::insert(const Key &key, const Value &value){
 		_root->insert(key, value);
 	}
 	++_size;
+	attachEnd();
 }
 void BinarySearchTree::erase(const Key &key){
 	if (!_root) return;
- 
+ 	detachEnd();
 	while (true){
 		Node* node = _root;
 		while (node){
@@ -552,6 +582,7 @@ void BinarySearchTree::erase(const Key &key){
 		}
 		--_size;
 	}
+	attachEnd();
 }
 size_t BinarySearchTree::size() const{
 	return _size;
@@ -561,5 +592,7 @@ void BinarySearchTree::output_tree(){
 		cout<<"empty tree lol";
 		return;
 	}
+	detachEnd();
 	_root->output_node_tree();
+	attachEnd();
 }
