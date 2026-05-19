@@ -2,7 +2,7 @@
 #include <iostream>
 #include <algorithm>
 #include <stdexcept>
-
+#include <limits>
 using namespace std;
 
 BinarySearchTree::Node::Node(Key key, Value value, 
@@ -39,7 +39,13 @@ void BinarySearchTree::Node::output_node_tree() const{
 	if (left){
 		left->output_node_tree();
 	}
-	std::cout<<keyValuePair.first<<" : "<<keyValuePair.second<<std::endl;
+	if (keyValuePair.first == std::numeric_limits<Key>::max()){
+		return;
+	}
+	std::cout << keyValuePair.first
+		  << " : "
+		  << keyValuePair.second
+		  << std::endl;	
 	if (right){
 		right->output_node_tree();
 	}
@@ -54,12 +60,17 @@ void BinarySearchTree::Node::insert(const Key &key, const Value &value){
 		}
 	}
 	else{
-		if (right){
+		if (right && right->keyValuePair.first != std::numeric_limits<Key>::max()){
 			right->insert(key, value);
 		}
 		else{
-			right = new Node(key,value,this);
-		}	
+			Node* oldRight = right;
+			right = new Node(key, value, this);
+			right->right = oldRight;
+			if (oldRight){
+				oldRight->parent = right;
+			}
+		}
 	}
 }
 void BinarySearchTree::Node::erase(const Key &key){
@@ -368,24 +379,24 @@ BinarySearchTree::equalRange(const Key &key) const{
 	return {first, last};
 }
 BinarySearchTree::Iterator BinarySearchTree::end(){
-	if(!_root){
+	if (!_root){
 		return Iterator(nullptr);
 	}
 	Node* current = _root;
-	while (current && current->right){
+	while (current->right){
 		current = current->right;
 	}
-	return Iterator(current->right);
+	return Iterator(current);
 }
 BinarySearchTree::ConstIterator BinarySearchTree::cend() const{
-	Node* current = _root;
-	if(!_root){
+	if (!_root){
 		return ConstIterator(nullptr);
 	}
-	while (current && current->right){
+	Node* current = _root;
+	while (current->right){
 		current = current->right;
 	}
-	return ConstIterator(current->right);
+	return ConstIterator(current);
 }
 BinarySearchTree::Iterator BinarySearchTree::begin(){
 	if (_root == nullptr){
@@ -465,12 +476,7 @@ BinarySearchTree::ConstIterator BinarySearchTree::min(const Key &key) const{
 	return temp2;
 }
 BinarySearchTree::ConstIterator BinarySearchTree::max() const{
-	if (!_root) return cend();
-	Node* current = _root;
-	while (current->right){
-		current = current->right;
-	}
-	return ConstIterator(current);
+	return --cend();
 }
 BinarySearchTree::ConstIterator BinarySearchTree::max(const Key &key) const{
 	ConstIterator temp1 = find(key);
@@ -488,21 +494,44 @@ BinarySearchTree::ConstIterator BinarySearchTree::max(const Key &key) const{
 	return temp2;
 }
 void BinarySearchTree::insert(const Key &key, const Value &value){
-	if(!_root){
-		_root = new Node(key, value, nullptr);
+	if (!_root){
+		_root = new Node(key, value);
+		_root->right = new Node(std::numeric_limits<Key>::max(),
+		                        Value(),
+		                        _root);
+		_size++;
+		return;
 	}
-	else{
-		_root->insert(key, value);
+	Node* current = _root;
+	while (current->right &&
+	       current->right->keyValuePair.first != std::numeric_limits<Key>::max()){
+		current = current->right;
 	}
-	++_size;
+	Node* endNode = current->right;
+	_root->insert(key, value);
+	current = _root;
+	while (current->right &&
+	       current->right->keyValuePair.first != std::numeric_limits<Key>::max()){
+		current = current->right;
+	}
+	if (!current->right){
+		current->right = endNode;
+		endNode->parent = current;
+	}
+	_size++;
 }
+
 void BinarySearchTree::erase(const Key &key){
 	if (!_root) return;
  
 	while (true){
 		Node* node = _root;
 		while (node){
-			if      (key < node->keyValuePair.first) node = node->left;
+/*			if (node->keyValuePair.first == std::numeric_limits<Key>::max()){
+				node = nullptr;
+				break;
+			}
+*/			if      (key < node->keyValuePair.first) node = node->left;
 			else if (key > node->keyValuePair.first) node = node->right;
 			else break;
 		}
@@ -556,10 +585,8 @@ void BinarySearchTree::erase(const Key &key){
 size_t BinarySearchTree::size() const{
 	return _size;
 }
-void BinarySearchTree::output_tree(){
-	if(!_root){
-		cout<<"empty tree lol";
-		return;
-	}
+
+void BinarySearchTree::output_tree() const {
+	if (!_root) return;
 	_root->output_node_tree();
 }
