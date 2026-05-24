@@ -101,7 +101,7 @@ public:
     private:
         const Node *_node;
     };
-    void clear(Node* node);//мои функции1
+    void clear(Node* node);
     //! Вставить элемент с ключем key и значением value
     void insert(const Key &key, const Value &value);
     //! Удалить все элементы с ключем key
@@ -146,11 +146,9 @@ public:
     size_t size() const;
     //! Вывести дерево в консоль
     void output_tree();
-    void attachEnd();//мои функции2
-    void detachEnd();//мои функции3
+
 private:
     size_t _size = 0; //!< размер дерева
     Node *_root = nullptr; //!< корневой узел дерева
-    Node *_end = nullptr; //моё поле
 };
 
