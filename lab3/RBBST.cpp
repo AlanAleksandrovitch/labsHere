@@ -5,8 +5,6 @@
 #include <limits>
 using namespace std;
 
-// Цвета: false = RED (как и стоит по умолчанию у нового узла),
-//        true  = BLACK. Sentinel всегда BLACK.
 static const bool RED   = false;
 static const bool BLACK = true;
 
@@ -18,11 +16,10 @@ BinarySearchTree::Node::Node(Key key, Value value,
 	this->parent = parent;
 	this->left = left;
 	this->right = right;
-	// color остаётся = false (RED) по умолчанию из заголовка
 }
 BinarySearchTree::Node::Node(const Node &other){
 	keyValuePair=other.keyValuePair;
-	color = other.color; // важно для RB: цвет должен копироваться
+	color = other.color;
 	parent = nullptr;
 	if (other.left){
 		left = new Node(*other.left);
@@ -56,9 +53,6 @@ void BinarySearchTree::Node::output_node_tree() const{
 		right->output_node_tree();
 	}
 }
-// Node::insert и Node::erase в RB-варианте не используются: вся работа
-// делается итеративно в BinarySearchTree::insert/erase (CLRS-style).
-// Оставляем пустые заглушки, чтобы соответствовать объявлениям в заголовке.
 void BinarySearchTree::Node::insert(const Key &, const Value &){}
 void BinarySearchTree::Node::erase(const Key &){}
 
@@ -339,9 +333,6 @@ BinarySearchTree::ConstIterator BinarySearchTree::cbegin() const{
 	}
 	return ConstIterator(current);
 }
-// find возвращает САМЫЙ ЛЕВЫЙ узел с ключом key (в смысле in-order).
-// Из-за RB-ротаций дубли могут оказаться и в левом поддереве найденного,
-// поэтому после совпадения мы продолжаем спускаться влево.
 BinarySearchTree::Iterator BinarySearchTree::find(const Key &key){
 	Node* current = _root;
 	Node* match = nullptr;
@@ -422,11 +413,6 @@ BinarySearchTree::ConstIterator BinarySearchTree::max(const Key &key) const{
 	return temp2;
 }
 
-// === Sentinel: снимаем/вешаем перед / после RB-операций ===
-// Идея: реальный RB-алгоритм НЕ должен видеть sentinel (иначе ломаются
-// black-height инварианты), поэтому мы каждый раз снимаем sentinel,
-// делаем чистую RB-операцию, и потом вешаем sentinel обратно как самый
-// правый чёрный лист. Получается "RB-дерево + декоративный sentinel".
 BinarySearchTree::Node* BinarySearchTree::detachSentinel(){
 	if (!_root){
 		return nullptr;
@@ -444,7 +430,6 @@ BinarySearchTree::Node* BinarySearchTree::detachSentinel(){
 		sent->parent = nullptr;
 	}
 	else{
-		// sentinel оказался корнем — значит реальных узлов нет
 		_root = nullptr;
 	}
 	return sent;
@@ -470,7 +455,6 @@ void BinarySearchTree::attachSentinel(Node* sent){
 	sent->parent = cur;
 }
 
-// === Ротации (классические CLRS) ===
 void BinarySearchTree::rotateLeft(Node* x){
 	Node* y = x->right;
 	x->right = y->left;
@@ -511,7 +495,6 @@ void BinarySearchTree::rotateRight(Node* x){
 	x->parent = y;
 }
 
-// === Insert fixup (CLRS, RB-INSERT-FIXUP) ===
 void BinarySearchTree::insertFixup(Node* z){
 	while (z->parent && z->parent->color == RED){
 		Node* gp = z->parent->parent;
@@ -519,7 +502,7 @@ void BinarySearchTree::insertFixup(Node* z){
 			break;
 		}
 		if (z->parent == gp->left){
-			Node* y = gp->right; // uncle
+			Node* y = gp->right;
 			if (y && y->color == RED){
 				z->parent->color = BLACK;
 				y->color = BLACK;
@@ -537,7 +520,7 @@ void BinarySearchTree::insertFixup(Node* z){
 			}
 		}
 		else{
-			Node* y = gp->left; // uncle
+			Node* y = gp->left;
 			if (y && y->color == RED){
 				z->parent->color = BLACK;
 				y->color = BLACK;
@@ -601,7 +584,6 @@ void BinarySearchTree::insert(const Key &key, const Value &value){
 	++_size;
 }
 
-// === Erase: CLRS RB-DELETE с явным xParent (nullptr-as-NIL) ===
 void BinarySearchTree::transplant(Node* u, Node* v){
 	if (!u->parent){
 		_root = v;
@@ -720,7 +702,6 @@ void BinarySearchTree::erase(const Key &key){
 		return;
 	}
 	if (key == std::numeric_limits<Key>::max()){
-		// ключ зарезервирован под sentinel — пользовательских узлов с ним нет
 		return;
 	}
 	Node* sent = detachSentinel();
@@ -808,7 +789,7 @@ size_t BinarySearchTree::heightImpl(Node* node) const{
 		return 0;
 	}
 	if (node->keyValuePair.first == std::numeric_limits<Key>::max()){
-		return 0; // sentinel в высоту не считаем
+		return 0;
 	}
 	size_t lh = heightImpl(node->left);
 	size_t rh = heightImpl(node->right);
